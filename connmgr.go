@@ -11,13 +11,11 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	logging "github.com/ipfs/go-log"
 	ma "github.com/multiformats/go-multiaddr"
+	"go.uber.org/zap"
 )
 
 var SilencePeriod = 10 * time.Second
-
-var log = logging.Logger("connmgr")
 
 // BasicConnMgr is a ConnManager that trims connections whenever the count exceeds the
 // high watermark. New connections are given a grace period before they're subject
@@ -41,7 +39,8 @@ type BasicConnMgr struct {
 	lastTrim      time.Time
 	silencePeriod time.Duration
 
-	ctx context.Context
+	logger *zap.Logger
+	ctx    context.Context
 }
 
 var _ connmgr.ConnManager = (*BasicConnMgr)(nil)
@@ -89,7 +88,7 @@ func (s *segment) tagInfoFor(p peer.ID) *peerInfo {
 //   their connections terminated) until 'low watermark' peers remain.
 // * grace is the amount of time a newly opened connection is given before it becomes
 //   subject to pruning.
-func NewConnManager(ctx context.Context, wg *sync.WaitGroup, low, hi int, grace time.Duration) *BasicConnMgr {
+func NewConnManager(ctx context.Context, wg *sync.WaitGroup, logger *zap.Logger, low, hi int, grace time.Duration) *BasicConnMgr {
 	cm := &BasicConnMgr{
 		highWater:     hi,
 		lowWater:      low,
@@ -98,6 +97,7 @@ func NewConnManager(ctx context.Context, wg *sync.WaitGroup, low, hi int, grace 
 		protected:     make(map[peer.ID]map[string]struct{}, 16),
 		silencePeriod: SilencePeriod,
 		ctx:           ctx,
+		logger:        logger.Named("connmgr"),
 		segments: func() (ret segments) {
 			for i := range ret {
 				ret[i] = &segment{
@@ -174,11 +174,10 @@ func (cm *BasicConnMgr) TrimOpenConns(ctx context.Context) {
 		return
 	}
 
-	defer log.EventBegin(ctx, "connCleanup").Done()
 	for _, c := range cm.getConnsToClose(ctx) {
-		log.Info("closing conn: ", c.RemotePeer())
-		log.Event(ctx, "closeConn", c.RemotePeer())
+		cm.logger.Info("closing connection", zap.String("peer.id", c.RemotePeer().String()))
 		c.Close()
+		cm.logger.Info("connection closed", zap.String("peer.id", c.RemotePeer().String()))
 	}
 
 	cm.lastTrim = time.Now()
@@ -211,7 +210,7 @@ func (cm *BasicConnMgr) getConnsToClose(ctx context.Context) []network.Conn {
 	now := time.Now()
 	nconns := int(atomic.LoadInt32(&cm.connCount))
 	if nconns <= cm.lowWater {
-		log.Info("open connection count below limit")
+		cm.logger.Warn("open connection count below limit")
 		return nil
 	}
 
@@ -326,7 +325,7 @@ func (cm *BasicConnMgr) UntagPeer(p peer.ID, tag string) {
 
 	pi, ok := s.peers[p]
 	if !ok {
-		log.Info("tried to remove tag from untracked peer: ", p)
+		cm.logger.Warn("tried to remove tag from untracked peer but failed", zap.String("peer.id", p.String()))
 		return
 	}
 
@@ -422,7 +421,7 @@ func (nn *cmNotifee) Connected(n network.Network, c network.Conn) {
 
 	_, ok = pinfo.conns[c]
 	if ok {
-		log.Error("received connected notification for conn we are already tracking: ", p)
+		cm.logger.Error("received connected notification for conn we are already tracking", zap.String("peer.id", p.String()))
 		return
 	}
 
@@ -442,13 +441,13 @@ func (nn *cmNotifee) Disconnected(n network.Network, c network.Conn) {
 
 	cinf, ok := s.peers[p]
 	if !ok {
-		log.Error("received disconnected notification for peer we are not tracking: ", p)
+		cm.logger.Error("received disconnected notification for peer we are not tracking", zap.String("peer.id", p.String()))
 		return
 	}
 
 	_, ok = cinf.conns[c]
 	if !ok {
-		log.Error("received disconnected notification for conn we are not tracking: ", p)
+		cm.logger.Error("received disconnected notification for peer we are not tracking", zap.String("peer.id", p.String()))
 		return
 	}
 

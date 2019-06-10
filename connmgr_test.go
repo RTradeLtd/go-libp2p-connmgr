@@ -13,6 +13,8 @@ import (
 
 	tu "github.com/libp2p/go-libp2p-core/test"
 	ma "github.com/multiformats/go-multiaddr"
+	"go.uber.org/zap/zaptest"
+
 )
 
 type tconn struct {
@@ -48,11 +50,11 @@ func randConn(t testing.TB, discNotify func(network.Network, network.Conn)) netw
 	return &tconn{peer: pid, disconnectNotify: discNotify}
 }
 
-func TestConnTrimming(t *testing.T) {
+ func TestConnTrimming(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	cm := NewConnManager(ctx, wg, 200, 300, 0)
+	cm := NewConnManager(ctx, wg, zaptest.NewLogger(t), 200, 300, 0)
 	not := cm.Notifee()
 
 	var conns []network.Conn
@@ -92,25 +94,25 @@ func TestConnsToClose(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	cm := NewConnManager(ctx, wg, 0, 10, 0)
+	cm := NewConnManager(ctx, wg, zaptest.NewLogger(t), 0, 10, 0)
 	conns := cm.getConnsToClose(context.Background())
 	if conns != nil {
 		t.Fatal("expected no connections")
 	}
 
-	cm = NewConnManager(ctx, wg, 10, 0, 0)
+	cm = NewConnManager(ctx, wg, zaptest.NewLogger(t), 10, 0, 0)
 	conns = cm.getConnsToClose(context.Background())
 	if conns != nil {
 		t.Fatal("expected no connections")
 	}
 
-	cm = NewConnManager(ctx, wg, 1, 1, 0)
+	cm = NewConnManager(ctx, wg, zaptest.NewLogger(t), 1, 1, 0)
 	conns = cm.getConnsToClose(context.Background())
 	if conns != nil {
 		t.Fatal("expected no connections")
 	}
 
-	cm = NewConnManager(ctx, wg, 1, 1, time.Duration(10*time.Minute))
+	cm = NewConnManager(ctx, wg, zaptest.NewLogger(t), 1, 1, time.Duration(10*time.Minute))
 	not := cm.Notifee()
 	for i := 0; i < 5; i++ {
 		conn := randConn(t, nil)
@@ -127,7 +129,7 @@ func TestGetTagInfo(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	start := time.Now()
-	cm := NewConnManager(ctx, wg, 1, 1, time.Duration(10*time.Minute))
+	cm := NewConnManager(ctx, wg, zaptest.NewLogger(t), 1, 1, time.Duration(10*time.Minute))
 	not := cm.Notifee()
 	conn := randConn(t, nil)
 	not.Connected(nil, conn)
@@ -200,7 +202,7 @@ func TestTagPeerNonExistant(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	cm := NewConnManager(ctx, wg, 1, 1, time.Duration(10*time.Minute))
+	cm := NewConnManager(ctx, wg, zaptest.NewLogger(t), 1, 1, time.Duration(10*time.Minute))
 
 	id := tu.RandPeerIDFatal(t)
 	cm.TagPeer(id, "test", 1)
@@ -214,7 +216,7 @@ func TestUntagPeer(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	cm := NewConnManager(ctx, wg, 1, 1, time.Duration(10*time.Minute))
+	cm := NewConnManager(ctx, wg, zaptest.NewLogger(t), 1, 1, time.Duration(10*time.Minute))
 	not := cm.Notifee()
 	conn := randConn(t, nil)
 	not.Connected(nil, conn)
@@ -248,7 +250,7 @@ func TestGetInfo(t *testing.T) {
 	defer cancel()
 	start := time.Now()
 	gp := time.Duration(10 * time.Minute)
-	cm := NewConnManager(ctx, wg, 1, 5, gp)
+	cm := NewConnManager(ctx, wg, zaptest.NewLogger(t), 1, 5, gp)
 	not := cm.Notifee()
 	conn := randConn(t, nil)
 	not.Connected(nil, conn)
@@ -278,7 +280,7 @@ func TestDoubleConnection(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	gp := time.Duration(10 * time.Minute)
-	cm := NewConnManager(ctx, wg, 1, 5, gp)
+	cm := NewConnManager(ctx, wg, zaptest.NewLogger(t), 1, 5, gp)
 	not := cm.Notifee()
 	conn := randConn(t, nil)
 	not.Connected(nil, conn)
@@ -297,7 +299,7 @@ func TestDisconnected(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	gp := time.Duration(10 * time.Minute)
-	cm := NewConnManager(ctx, wg, 1, 5, gp)
+	cm := NewConnManager(ctx, wg, zaptest.NewLogger(t), 1, 5, gp)
 	not := cm.Notifee()
 	conn := randConn(t, nil)
 	not.Connected(nil, conn)
@@ -336,7 +338,7 @@ func TestQuickBurstRespectsSilencePeriod(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	cm := NewConnManager(ctx, wg, 10, 20, 0)
+	cm := NewConnManager(ctx, wg, zaptest.NewLogger(t), 10, 20, 0)
 	not := cm.Notifee()
 
 	var conns []network.Conn
@@ -374,7 +376,7 @@ func TestPeerProtectionSingleTag(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	SilencePeriod = 0
-	cm := NewConnManager(ctx, wg, 19, 20, 0)
+	cm := NewConnManager(ctx, wg, zaptest.NewLogger(t), 19, 20, 0)
 	SilencePeriod = 10 * time.Second
 
 	not := cm.Notifee()
@@ -439,7 +441,7 @@ func TestPeerProtectionMultipleTags(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	SilencePeriod = 0
-	cm := NewConnManager(ctx, wg, 19, 20, 0)
+	cm := NewConnManager(ctx, wg, zaptest.NewLogger(t), 19, 20, 0)
 	SilencePeriod = 10 * time.Second
 
 	not := cm.Notifee()
@@ -527,7 +529,7 @@ func TestPeerProtectionIdempotent(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	SilencePeriod = 0
-	cm := NewConnManager(ctx, wg, 10, 20, 0)
+	cm := NewConnManager(ctx, wg, zaptest.NewLogger(t), 10, 20, 0)
 	SilencePeriod = 10 * time.Second
 
 	id, _ := tu.RandPeerID()
@@ -561,7 +563,7 @@ func TestUpsertTag(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	cm := NewConnManager(ctx, wg, 1, 1, time.Duration(10*time.Minute))
+	cm := NewConnManager(ctx, wg, zaptest.NewLogger(t), 1, 1, time.Duration(10*time.Minute))
 	not := cm.Notifee()
 	conn := randConn(t, nil)
 	rp := conn.RemotePeer()
@@ -599,7 +601,7 @@ func TestTemporaryEntriesClearedFirst(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	cm := NewConnManager(ctx, wg, 1, 1, 0)
+	cm := NewConnManager(ctx, wg, zaptest.NewLogger(t), 1, 1, 0)
 
 	id := tu.RandPeerIDFatal(t)
 	cm.TagPeer(id, "test", 20)
@@ -623,7 +625,7 @@ func TestTemporaryEntryConvertedOnConnection(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	cm := NewConnManager(ctx, wg, 1, 1, 0)
+	cm := NewConnManager(ctx, wg,zaptest.NewLogger(t),  1, 1, 0)
 
 	conn := randConn(t, nil)
 	cm.TagPeer(conn.RemotePeer(), "test", 20)
