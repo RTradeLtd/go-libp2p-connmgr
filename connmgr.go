@@ -15,6 +15,8 @@ import (
 	"go.uber.org/zap"
 )
 
+// SilencePeriod does something
+// seems to allow us to silence periodic runs
 var SilencePeriod = 10 * time.Second
 
 // BasicConnMgr is a ConnManager that trims connections whenever the count exceeds the
@@ -112,10 +114,14 @@ func NewConnManager(ctx context.Context, wg *sync.WaitGroup, logger *zap.Logger,
 	return cm
 }
 
+// Close is here to satisfy the interface of ConnectionManager
+// previously in the libp2p version this called a cancel func
 func (cm *BasicConnMgr) Close() error {
 	return nil
 }
 
+// Protect can be used to mark a peer as protected
+// from connection closing
 func (cm *BasicConnMgr) Protect(id peer.ID, tag string) {
 	cm.plk.Lock()
 	defer cm.plk.Unlock()
@@ -128,6 +134,7 @@ func (cm *BasicConnMgr) Protect(id peer.ID, tag string) {
 	tags[tag] = struct{}{}
 }
 
+// Unprotect removes protection status from a peer
 func (cm *BasicConnMgr) Unprotect(id peer.ID, tag string) (protected bool) {
 	cm.plk.Lock()
 	defer cm.plk.Unlock()
