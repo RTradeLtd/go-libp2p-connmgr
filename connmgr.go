@@ -182,9 +182,9 @@ func (cm *BasicConnMgr) TrimOpenConns(ctx context.Context) {
 	}
 
 	for _, c := range cm.getConnsToClose(ctx) {
-		cm.logger.Info("closing connection", zap.String("peer.id", c.RemotePeer().String()))
+		cm.logger.Debug("closing connection", zap.String("peer.id", c.RemotePeer().String()))
 		c.Close()
-		cm.logger.Info("connection closed", zap.String("peer.id", c.RemotePeer().String()))
+		cm.logger.Debug("connection closed", zap.String("peer.id", c.RemotePeer().String()))
 	}
 
 	cm.lastTrim = time.Now()
@@ -217,7 +217,7 @@ func (cm *BasicConnMgr) getConnsToClose(ctx context.Context) []network.Conn {
 	now := time.Now()
 	nconns := int(atomic.LoadInt32(&cm.connCount))
 	if nconns <= cm.lowWater {
-		cm.logger.Warn("open connection count below limit")
+		cm.logger.Debug("open connection count below limit")
 		return nil
 	}
 
@@ -332,7 +332,7 @@ func (cm *BasicConnMgr) UntagPeer(p peer.ID, tag string) {
 
 	pi, ok := s.peers[p]
 	if !ok {
-		cm.logger.Warn("tried to remove tag from untracked peer but failed", zap.String("peer.id", p.String()))
+		cm.logger.Debug("tried to remove tag from untracked peer but failed", zap.String("peer.id", p.String()))
 		return
 	}
 
