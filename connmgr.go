@@ -246,7 +246,7 @@ func (cm *BasicConnMgr) getConnsToClose(ctx context.Context) []network.Conn {
 	cm.plk.RUnlock()
 
 	if ncandidates < cm.lowWater {
-		log.Info("open connection count above limit but too many are in the grace period")
+		cm.logger.Info("open connection count above limit but too many are in the grace period")
 		// We have too many connections but fewer than lowWater
 		// connections out of the grace period.
 		//

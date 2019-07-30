@@ -14,7 +14,6 @@ import (
 	tu "github.com/libp2p/go-libp2p-core/test"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.uber.org/zap/zaptest"
-
 )
 
 type tconn struct {
@@ -50,7 +49,7 @@ func randConn(t testing.TB, discNotify func(network.Network, network.Conn)) netw
 	return &tconn{peer: pid, disconnectNotify: discNotify}
 }
 
- func TestConnTrimming(t *testing.T) {
+func TestConnTrimming(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -334,9 +333,11 @@ func TestGracePeriod(t *testing.T) {
 	if detectrace.WithRace() {
 		t.Skip("race detector is unhappy with this test")
 	}
-
+	wg := &sync.WaitGroup{}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	SilencePeriod = 0
-	cm := NewConnManager(10, 20, 100*time.Millisecond)
+	cm := NewConnManager(ctx, wg, zaptest.NewLogger(t), 10, 20, 100*time.Millisecond)
 	SilencePeriod = 10 * time.Second
 
 	not := cm.Notifee()
@@ -706,7 +707,7 @@ func TestTemporaryEntryConvertedOnConnection(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	cm := NewConnManager(ctx, wg,zaptest.NewLogger(t),  1, 1, 0)
+	cm := NewConnManager(ctx, wg, zaptest.NewLogger(t), 1, 1, 0)
 
 	conn := randConn(t, nil)
 	cm.TagPeer(conn.RemotePeer(), "test", 20)
