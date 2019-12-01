@@ -4,7 +4,7 @@ go 1.12
 
 require (
 	github.com/ipfs/go-detect-race v0.0.1
-	github.com/libp2p/go-libp2p-core v0.2.3
+	github.com/libp2p/go-libp2p-core v0.2.5
 	github.com/multiformats/go-multiaddr v0.1.1
 	github.com/pkg/errors v0.8.1 // indirect
 	github.com/stretchr/testify v1.3.0 // indirect
