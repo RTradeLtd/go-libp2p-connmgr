@@ -51,7 +51,7 @@ func randConn(t testing.TB, discNotify func(network.Network, network.Conn)) netw
 
 // Make sure multiple trim calls block.
 func TestTrimBlocks(t *testing.T) {
-	cm := NewConnManager(200, 300, 0)
+	cm := NewConnManager(context.Background(), &sync.WaitGroup{}, zaptest.NewLogger(t), 200, 300, 0)
 
 	cm.lastTrimMu.RLock()
 
@@ -79,7 +79,7 @@ func TestTrimBlocks(t *testing.T) {
 // Make sure we return from trim when the context is canceled.
 func TestTrimCancels(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	cm := NewConnManager(200, 300, 0)
+	cm := NewConnManager(context.Background(), &sync.WaitGroup{}, zaptest.NewLogger(t), 200, 300, 0)
 
 	cm.lastTrimMu.RLock()
 	defer cm.lastTrimMu.RUnlock()
@@ -96,14 +96,14 @@ func TestTrimCancels(t *testing.T) {
 
 // Make sure trim returns when closed.
 func TestTrimClosed(t *testing.T) {
-	cm := NewConnManager(200, 300, 0)
+	cm := NewConnManager(context.Background(), &sync.WaitGroup{}, zaptest.NewLogger(t), 200, 300, 0)
 	cm.Close()
 	cm.TrimOpenConns(context.Background())
 }
 
 // Make sure joining an existing trim works.
 func TestTrimJoin(t *testing.T) {
-	cm := NewConnManager(200, 300, 0)
+	cm := NewConnManager(context.Background(), &sync.WaitGroup{}, zaptest.NewLogger(t), 200, 300, 0)
 	cm.lastTrimMu.RLock()
 	var wg sync.WaitGroup
 	wg.Add(3)
@@ -170,19 +170,19 @@ func TestConnsToClose(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	cm := NewConnManager(ctx, wg, zaptest.NewLogger(t), 0, 10, 0)
-	conns := cm.getConnsToClose(context.Background())
+	conns := cm.getConnsToClose()
 	if conns != nil {
 		t.Fatal("expected no connections")
 	}
 
 	cm = NewConnManager(ctx, wg, zaptest.NewLogger(t), 10, 0, 0)
-	conns = cm.getConnsToClose(context.Background())
+	conns = cm.getConnsToClose()
 	if conns != nil {
 		t.Fatal("expected no connections")
 	}
 
 	cm = NewConnManager(ctx, wg, zaptest.NewLogger(t), 1, 1, 0)
-	conns = cm.getConnsToClose(context.Background())
+	conns = cm.getConnsToClose()
 	if conns != nil {
 		t.Fatal("expected no connections")
 	}
