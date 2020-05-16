@@ -92,7 +92,7 @@ func (s *segment) tagInfoFor(p peer.ID) *peerInfo {
 //   their connections terminated) until 'low watermark' peers remain.
 // * grace is the amount of time a newly opened connection is given before it becomes
 //   subject to pruning.
-func NewConnManager(ctx context.Context, wg *sync.WaitGroup, logger *zap.Logger, low, hi int, grace time.Duration) *BasicConnMgr {
+func NewConnManager(ctx context.Context, logger *zap.Logger, low, hi int, grace time.Duration) *BasicConnMgr {
 	cm := &BasicConnMgr{
 		highWater:     hi,
 		lowWater:      low,
@@ -111,8 +111,7 @@ func NewConnManager(ctx context.Context, wg *sync.WaitGroup, logger *zap.Logger,
 			return ret
 		}(),
 	}
-	wg.Add(1)
-	go cm.background(wg)
+	go cm.background()
 	return cm
 }
 
@@ -194,10 +193,9 @@ func (cm *BasicConnMgr) TrimOpenConns(ctx context.Context) {
 	}
 }
 
-func (cm *BasicConnMgr) background(wg *sync.WaitGroup) {
+func (cm *BasicConnMgr) background() {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
-	defer wg.Done()
 	for {
 		var waiting chan<- struct{}
 		select {

@@ -8,7 +8,6 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/network"
 	"go.uber.org/zap/zaptest"
-
 )
 
 func randomConns(tb testing.TB) (c [5000]network.Conn) {
@@ -23,7 +22,7 @@ func BenchmarkLockContention(b *testing.B) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	conns := randomConns(b)
-	cm := NewConnManager(ctx, wg, zaptest.NewLogger(b), 1000, 1000, 0)
+	cm := NewConnManager(ctx, zaptest.NewLogger(b), 1000, 1000, 0)
 	not := cm.Notifee()
 
 	kill := make(chan struct{})
