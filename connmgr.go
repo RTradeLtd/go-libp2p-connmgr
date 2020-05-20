@@ -242,7 +242,8 @@ func (cm *BasicConnMgr) trim() {
 
 	// do the actual trim.
 	for _, c := range cm.getConnsToClose() {
-		cm.logger.Info("closing connection", zap.String("remote.peer", c.RemotePeer().String()))
+		// TODO(bonedaddy): we probably dont need this since it will be used a lot and not really worth noting
+		// cm.logger.Info("closing connection", zap.String("remote.peer", c.RemotePeer().String()))
 		c.Close()
 	}
 
